@@ -19,7 +19,7 @@ Then run the code from the root directory of the project with
 python -m src.main
 ```
 
-[!][alt](https://github.com/MatteoFalcioni/dsf-agent/blob/main/readme_imgs/screenshot.png?raw=true)
+![alt](https://github.com/MatteoFalcioni/dsf-agent/blob/main/readme_imgs/screenshot.png?raw=true)
 
 ## Future Improvements Ideas:
 
