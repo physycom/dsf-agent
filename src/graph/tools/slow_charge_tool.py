@@ -34,9 +34,10 @@ def simulate_slow_charge(
     EDGES_FILE = "bologna_edges.geojson"  
     NODES_FILE = "bologna_nodes.csv"
 
+    print("Constructing road network...")
     rn = mobility.RoadNetwork()
     rn.importEdges(f"./input/{EDGES_FILE}")
-    # rn.importNodeProperties(f"./input/{NODES_FILE}")  not working idk why 
+    rn.importNodeProperties(f"./input/{NODES_FILE}", separator=",")  # notice the separator is comma, not semicolon
 
     # Clear output directory
     output_dir = pathlib.Path(f"./{OUT_FOLDER}")
@@ -47,6 +48,8 @@ def simulate_slow_charge(
 
     rn.adjustNodeCapacities()
     rn.autoMapStreetLanes()
+
+    print("Road network constructed successfully.")
 
     # Copy edges file to output directory for reference
     shutil.copy(f"./input/{EDGES_FILE}", f"./{OUT_FOLDER}/edges.geojson")

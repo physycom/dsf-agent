@@ -1,5 +1,6 @@
 from rapidfuzz import process, fuzz
 import pandas as pd
+from datetime import datetime
 
 def fuzzy_match(dataset : pd.Dataframe, column_name : str, input_str : str, threshold : int = 65) -> str: 
     """
@@ -40,3 +41,16 @@ def fuzzy_match(dataset : pd.Dataframe, column_name : str, input_str : str, thre
 
     match, score, _ = match_result
     return match, score
+
+def get_epoch_time(day : str, start_hour : int) -> int:
+    """
+    Returns the epoch time for a given day and hour.
+
+    Args:
+        day: The day of the simulation in the format YYYY-MM-DD
+        start_hour: The hour of the day to start the simulation at, as an integer between 0 and 23
+
+    Returns:
+        The epoch time for the given day and hour in UTC.
+    """
+    return datetime.strptime(day, "%Y-%m-%d").timestamp() + start_hour * 3600   # UTC

@@ -7,7 +7,7 @@ from langchain_core.messages import ToolMessage
 from typing import Annotated
 from tqdm.rich import trange
 import geopandas as gpd
-from .utils import fuzzy_match
+from .utils import fuzzy_match, get_epoch_time
 import numpy as np 
 import pickle
 from datetime import datetime
@@ -58,20 +58,28 @@ def run_simulation(
     runtime : ToolRuntime,
     dt_agent : Annotated[int, "Time interval for agent spawning"] = 10,
     duration : Annotated[int, "Duration of the simulation, in seconds"] = 24 * 60 * 60,
-    day : Annotated[int, "The day of the simulation"] = 'boh',
-    start_hour: Annotated[int, "The hour of the day to start the simulation at"] = 'boh',
+    day : Annotated[str, "The day of the simulation in the format YYYY-MM-DD"] = '2022-01-31',
+    start_hour: Annotated[int, "The hour of the day to start the simulation at, as an integer between 0 and 23"] = 0,
 )-> Command:
     """
     Use this tool to run the mobility simulation. 
+
+    Args:
+        dt_agent: Time interval for agent spawning
+        duration: Duration of the simulation, in seconds
+        day: The day of the simulation in the format YYYY-MM-DD
+        start_hour: The hour of the day to start the simulation at, as an integer between 0 and 23
+
+    Returns:
+        A message indicating that the simulation has been run.
+        The path to the output directory containing the simulation results.
     """
 
     edges_filepath = runtime.state["edges_filepath"]
 
     set_log_level(LogLevel.ERROR)
 
-    SCALE = 25  # 35
-    DT_AGENT = 10  # seconds
-    DAY_SECONDS = 24 * 60 * 60  # // 3
+    SCALE = 25  # hardcoded 
 
     NORM_WEIGHTS = False
     SMOOTHING_HOURS = 3  # Number of hours to average over (odd number recommended)
@@ -91,9 +99,8 @@ def run_simulation(
                 dest_dict[key] = 1
 
     rn = mobility.RoadNetwork()
-    # TODO: find a way to not mess uo inputs and ouptus when the agent removes an edge, or for different runs 
     rn.importEdges(edges_filepath)
-    rn.importNodeProperties("./input/node_props.csv")
+    rn.importNodeProperties("./input/node_props.csv", separator=",")
     rn.makeRoundabout(72)
 
     print(f"Bologna's road network has {rn.nNodes()} nodes and {rn.nEdges()} edges.")
@@ -117,13 +124,12 @@ def run_simulation(
     simulator = mobility.Dynamics(rn, False, 69, 0.8)
     simulator.killStagnantAgents(10.0)
 
-    # Get the epoch time for 2022-01-31 00:00:00 UTC
-    # TODO: change this for the day the agent selects
-    epoch_time = 1643587200
+    # Get the epoch time for the actual day of the simulation
+    epoch_time = get_epoch_time(day, start_hour)
     simulator.setInitTime(epoch_time)
 
-    # TODO: change the for to go on until start_hour + duration 
-    for i in trange(0, DAY_SECONDS + 1, desc="Simulating flows"):
+    # NOTE: simulate from start_hour until start_hour + duration 
+    for i in trange(0, duration + 1, desc="Simulating flows"):
         if i % 3600 == 0 and i // 3600 < len(origin_nodes):
             # do a mean over the weights for SMOOTHING_HOURS hours (centered on current hour)
             origins = origin_nodes[
@@ -162,7 +168,7 @@ def run_simulation(
                 simulator.saveTravelData("./output/speeds.csv")
                 # if i % 1500 == 0:
                 simulator.saveMacroscopicObservables("./output/data.csv")
-        if i % DT_AGENT == 0 and i // DT_AGENT < len(input_vehicles):
-            n_agents = int(input_vehicles[i // DT_AGENT] / SCALE)
+        if i % dt_agent == 0 and i // dt_agent < len(input_vehicles):
+            n_agents = int(input_vehicles[i // dt_agent] / SCALE)
             simulator.addAgentsRandomly(n_agents if n_agents > 0 else 0)
         simulator.evolve(False)
