@@ -40,7 +40,7 @@ async def main():
         # Create state with user message
         init_state = {
             "messages": [HumanMessage(content=user_input)], 
-            "edges_filepath" : "./input/bologna_edges.csv", 
+            "edges_filepath" : "./input/true_edges.csv", 
             "nodes_filepath" : "./input/bologna_nodes.csv"
             }
         
@@ -48,8 +48,9 @@ async def main():
         async for chunk in graph.astream(init_state, config=config):
             for node_name, values in chunk.items():
                 if 'messages' in values:
-                    print("\n" + "*"*25 + f" {node_name} " + "*"*25)
-                    print(values['messages'][-1])
+                    print("\n" + "*"*25 + f" {node_name} " + "*"*25 + "\n")
+                    print(values['messages'][-1].content)
+                    print("\n" + "*"*66 + "\n")
         
         print()  # Add spacing between conversations
 

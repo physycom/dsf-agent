@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from typing import Literal
 
 from .tools.slow_charge_tool import simulate_slow_charge
+from .tools.simulation_tools import run_simulation, remove_edge
 from .prompts.prompt import prompt
 from .state import SimulationState
 from datetime import datetime
@@ -31,7 +32,7 @@ def make_graph(
     # instantiate the agent
     agent = create_agent(
         model=ChatOpenAI(model="gpt-4.1-mini", temperature=0.0),
-        tools=[simulate_slow_charge],
+        tools=[simulate_slow_charge, run_simulation, remove_edge],
         system_prompt=prompt,
         state_schema=SimulationState
     )

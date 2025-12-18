@@ -12,6 +12,11 @@ import numpy as np
 import pickle
 from datetime import datetime
 
+import warnings
+from tqdm import TqdmExperimentalWarning
+# I hate warnings
+warnings.filterwarnings("ignore", category=TqdmExperimentalWarning)
+
 @tool 
 def remove_edge(
     runtime : ToolRuntime,
@@ -75,7 +80,10 @@ def run_simulation(
         The path to the output directory containing the simulation results.
     """
 
+    print(f"\n=== RUNNING SIMULATION ===\n\nAttempting to run simulation with parameters: dt_agent={dt_agent}, duration={duration}, day={day}, start_hour={start_hour}\n")
+
     edges_filepath = runtime.state["edges_filepath"]
+    print(f">>> Loading edges from {edges_filepath}...")
 
     set_log_level(LogLevel.ERROR)
 
@@ -85,6 +93,7 @@ def run_simulation(
 
     input_vehicles = np.load("./input/vehicles10seconds_spline.npy")
 
+    print(">>> Loading origin and destination nodes...")
     origin_nodes = pickle.load(open("./input/origin_dicts.pkl", "rb"))
     destination_nodes = pickle.load(open("./input/destination_dicts.pkl", "rb"))
 
@@ -102,8 +111,8 @@ def run_simulation(
     # rn.importNodeProperties("./input/node_props.csv") # not needed for now
     rn.makeRoundabout(72)
 
-    print(f"Bologna's road network has {rn.nNodes()} nodes and {rn.nEdges()} edges.")
-    print(f"There are {rn.nCoils()} magnetic coils, {rn.nTrafficLights()} traffic lights and {rn.nRoundabouts()} roundabouts")
+    print(f">>> Bologna's road network has {rn.nNodes()} nodes and {rn.nEdges()} edges.")
+    print(f">>> There are {rn.nCoils()} magnetic coils, {rn.nTrafficLights()} traffic lights and {rn.nRoundabouts()} roundabouts\n")
 
     # Clear output directory
     output_dir = pathlib.Path("./output")
@@ -125,8 +134,11 @@ def run_simulation(
     epoch_time = get_epoch_time(day, start_hour) # start minute
     simulator.setInitTime(epoch_time)
 
+    start_time_seconds = start_hour * 3600
+    end_time_seconds = start_time_seconds + duration
+
     # NOTE: simulate from start_hour until start_hour + duration 
-    for i in trange(start_hour * 3600, duration + 1, desc="Simulating flows"):
+    for i in trange(start_time_seconds, end_time_seconds + 1, desc="Simulating flows"):
         if i % 3600 == 0 and i // 3600 < len(origin_nodes):
             # do a mean over the weights for SMOOTHING_HOURS hours (centered on current hour)
             origins = origin_nodes[
@@ -169,3 +181,11 @@ def run_simulation(
             n_agents = int(input_vehicles[i // dt_agent] / SCALE)
             simulator.addAgentsRandomly(n_agents if n_agents > 0 else 0)
         simulator.evolve(False)
+
+    print("\n=== SIMULATION COMPLETED SUCCESSFULLY ===\n")
+
+    return Command(
+        update={
+            "messages": [ToolMessage(f"Simulation completed successfully. Results saved to ./output directory.", tool_call_id=runtime.tool_call_id)]
+        }
+    )
