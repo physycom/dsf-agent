@@ -7,8 +7,13 @@ At the moment the implementation consists only of a simple agent that can run th
 
 Clone this repository:
 ```bash
-git clone https://github.com/MatteoFalcioni/dsf-agent
-cd dsf-agent
+$ git clone https://github.com/MatteoFalcioni/dsf-agent
+$ cd dsf-agent
+```
+
+Then install the required packages:
+```bash
+$ pip install -r requirements.txt
 ```
 
 First, run the [cartography notebook](./notebooks/cartography.ipynb) in order to get the necessary files for the simulation.
@@ -16,7 +21,7 @@ First, run the [cartography notebook](./notebooks/cartography.ipynb) in order to
 Then run the code from the root directory of the project with
 
 ```bash
-python -m src.main
+$ python -m src.main
 ```
 
 ![alt](https://github.com/MatteoFalcioni/dsf-agent/blob/main/readme_imgs/screenshot.png?raw=true)

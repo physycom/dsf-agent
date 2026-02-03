@@ -37,15 +37,20 @@ async def main():
             print("\nExiting chat...")
             break
         
-        # Create state with user message
-        state = {"messages": [HumanMessage(content=user_input)]}
+        # Create initial state 
+        init_state = {
+            "messages": [HumanMessage(content=user_input)], 
+            "edges_filepath" : "./input/true_edges.csv",   # default edges file
+            "nodes_filepath" : "./input/bologna_nodes.csv"  # default nodes file
+            }
         
         # Stream agent response
-        async for chunk in graph.astream(state, config=config):
+        async for chunk in graph.astream(init_state, config=config):
             for node_name, values in chunk.items():
                 if 'messages' in values:
-                    print("\n" + "*"*25 + f" {node_name} " + "*"*25)
-                    values['messages'][-1].pretty_print()
+                    print("\n" + "*"*25 + f" {node_name} " + "*"*25 + "\n")
+                    print(values['messages'][-1].content)
+                    print("\n" + "*"*66 + "\n")
         
         print()  # Add spacing between conversations
 

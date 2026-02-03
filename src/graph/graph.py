@@ -3,12 +3,13 @@ from langchain.agents import AgentState, create_agent
 from langchain_openai import ChatOpenAI
 from langgraph.types import Command
 from langchain_core.messages import HumanMessage
-from dotenv import load_dotenv
+from dotenv import load_dotenv   
 from typing import Literal
 
 from .tools.slow_charge_tool import simulate_slow_charge
+from .tools.simulation_tools import run_simulation, remove_edge
 from .prompts.prompt import prompt
-
+from .state import SimulationState
 from datetime import datetime
 
 load_dotenv()
@@ -30,13 +31,14 @@ def make_graph(
 
     # instantiate the agent
     agent = create_agent(
-        model=ChatOpenAI(model="gpt-4.1", temperature=0.0),
-        tools=[simulate_slow_charge],
-        system_prompt=prompt
+        model=ChatOpenAI(model="gpt-4.1-mini", temperature=0.0),
+        tools=[simulate_slow_charge, run_simulation, remove_edge],
+        system_prompt=prompt,
+        state_schema=SimulationState
     )
 
     # define nodes
-    async def invoke_agent(state : AgentState) -> Command[Literal['__end__']]:
+    async def invoke_agent(state : SimulationState) -> Command[Literal['__end__']]:
         """
         Node that simply invokes the agent
         """
@@ -48,7 +50,7 @@ def make_graph(
         )
 
     # build graph
-    builder = StateGraph(AgentState)
+    builder = StateGraph(SimulationState)
     builder.add_node("mobility agent", invoke_agent)
     builder.add_edge(START, "mobility agent")
 
