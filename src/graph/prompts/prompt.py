@@ -21,6 +21,14 @@ This tool removes a street from the simulation's cartography.
 Use it if the user asks you to remove a street from the simulation's cartography, before running simulations.
 If the user asks to "close" a street, interpret it as removing the street from the simulation's cartography.
 
+If you have already removed a street and the user asks to remove another, assume the first removal is applied and use the current cartography state.
+
+## Change Number of Lanes
+
+The `change_number_of_lanes` tool takes the following arguments:
+- `street_name`: The name of the street to change the number of lanes of
+- `number_of_lanes`: The number of lanes to change the street to
+
 ## Run Simulation
 
 The `run_simulation` tool takes the following arguments:

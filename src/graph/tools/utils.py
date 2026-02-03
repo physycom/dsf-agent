@@ -1,24 +1,23 @@
 from rapidfuzz import process, fuzz
 import geopandas as gpd
 from datetime import datetime, timezone
+import pandas as pd
+from shapely import wkt
 
-def fuzzy_match(gdf : gpd.GeoDataFrame, column_name : str, input_str : str, threshold : int = 65) -> str: 
+def fuzzy_match(gdf : gpd.GeoDataFrame, column_name : str, input_str : str) -> tuple[str, int]: 
     """
     Performs fuzzy matching to find the best match for the input string
     within a specified column of a dataset.
 
-    Returns the best matching string and score if above the threshold,
-    otherwise a message indicating no match.
+    Returns the best matching string and score,
 
     Args: 
         gdf: The geodataframe to search in
         column_name: The column to search in
         input_str: The input string to match
-        threshold: The threshold for the match score
 
     Returns:
-        A tuple containing the best matching string and score if above the threshold,
-        otherwise None. 
+        A tuple containing the best matching string and score. 
         
         Example: input "torre del orologio" returns ("Torre dell'Orologio", 92)
     """
@@ -27,13 +26,14 @@ def fuzzy_match(gdf : gpd.GeoDataFrame, column_name : str, input_str : str, thre
         gdf[column_name]
         .dropna()
         .astype(str)
+        .str.lower()
         .str.strip().unique()
     )
 
     match_result = process.extractOne(
-        input_str,
+        input_str.lower().strip(),
         known_strs,
-        scorer=fuzz.token_sort_ratio   # maybe there are others that work better w/ street names?
+        scorer=fuzz.ratio   # maybe there are others that work better w/ street names?
     )
 
     if match_result is None:
@@ -42,6 +42,23 @@ def fuzzy_match(gdf : gpd.GeoDataFrame, column_name : str, input_str : str, thre
     match, score, _ = match_result
 
     return match, score
+
+def read_edges_file(filepath: str) -> gpd.GeoDataFrame:
+    """
+    Reads the edges file from the given filepath and returns a GeoDataFrame.
+
+    We need to read the file as a DataFrame first, then convert the string column to real geometric objects, and then create a GeoDataFrame.
+
+    Args:
+        filepath: The path to the edges file
+    Returns:
+        A GeoDataFrame containing the edges data.
+    """
+    edges_df = pd.read_csv(filepath, sep=";")
+    # convert the string column to real geometric objects
+    edges_df['geometry'] = edges_df['geometry'].apply(wkt.loads)
+    # create a GeoDataFrame
+    return gpd.GeoDataFrame(edges_df, geometry='geometry', crs="EPSG:4326")
 
 def get_epoch_time(day: str, start_hour: int, start_minute: int = 0) -> int:
     """

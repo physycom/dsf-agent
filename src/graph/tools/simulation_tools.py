@@ -18,47 +18,6 @@ from tqdm import TqdmExperimentalWarning
 warnings.filterwarnings("ignore", category=TqdmExperimentalWarning)
 
 @tool 
-def remove_edge(
-    runtime : ToolRuntime,
-    street_name: Annotated[str, "The name of the street to remove"]
-)->Command:
-    """
-    Use this tool to remove a street from the simulation's cartography.
-
-    Args:
-        street_name: The name of the street to remove.
-
-    Returns:
-        A message indicating that the street has been removed. If no match is found, an error message is returned.
-    """
-
-    # read the edges file from state
-    edges_gdf = gpd.read_file(runtime.state["edges_filepath"]) 
-
-    # names are saved under the 'name' field like this: via_alessandro_codivilla
-    # the llm needs a way to match natural language input with the exact name: use fuzzy match! 
-    match, score = fuzzy_match(edges_gdf, "name", street_name)
-    if match is None:
-        tool_err = f"No match found for '{street_name}'"
-        return Command(update={"messages": [ToolMessage(tool_err, tool_call_id=runtime.tool_call_id)]})
-
-    # remove the edge from the file - but wrap in geodf because it can degrade to simple df
-    edges_gdf = gpd.GeoDataFrame(edges_gdf[edges_gdf["name"] != match])
-    
-    # save the modified edges file w/ a timestamp
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    edges_filepath = f"./input/bologna_edges_{timestamp}.geojson"
-    edges_gdf.to_file(edges_filepath, driver="GeoJSON")
-
-    return Command(
-        update={
-            "messages": [ToolMessage(f"Street '{match}' has been removed.", tool_call_id=runtime.tool_call_id)],
-            "edges_filepath" : edges_filepath # save the edges file in state
-        }
-    )
-
-
-@tool 
 def run_simulation(
     runtime : ToolRuntime,
     dt_agent : Annotated[int, "Time interval for agent spawning"] = 10,
