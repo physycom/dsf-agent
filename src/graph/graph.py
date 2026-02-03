@@ -1,5 +1,5 @@
 from langgraph.graph import StateGraph, START
-from langchain.agents import AgentState, create_agent
+from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 from langgraph.types import Command
 from langchain_core.messages import HumanMessage
@@ -7,7 +7,8 @@ from dotenv import load_dotenv
 from typing import Literal
 
 from .tools.slow_charge_tool import simulate_slow_charge
-from .tools.simulation_tools import run_simulation, remove_edge
+from .tools.simulation_tools import run_simulation
+from .tools.edges_tools import remove_edge, change_number_of_lanes
 from .prompts.prompt import prompt
 from .state import SimulationState
 from datetime import datetime
@@ -32,7 +33,7 @@ def make_graph(
     # instantiate the agent
     agent = create_agent(
         model=ChatOpenAI(model="gpt-4.1-mini", temperature=0.0),
-        tools=[simulate_slow_charge, run_simulation, remove_edge],
+        tools=[simulate_slow_charge, run_simulation, remove_edge, change_number_of_lanes],
         system_prompt=prompt,
         state_schema=SimulationState
     )
