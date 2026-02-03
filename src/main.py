@@ -37,11 +37,11 @@ async def main():
             print("\nExiting chat...")
             break
         
-        # Create state with user message
+        # Create initial state 
         init_state = {
             "messages": [HumanMessage(content=user_input)], 
-            "edges_filepath" : "./input/true_edges.csv", 
-            "nodes_filepath" : "./input/bologna_nodes.csv"
+            "edges_filepath" : "./input/true_edges.csv",   # default edges file
+            "nodes_filepath" : "./input/bologna_nodes.csv"  # default nodes file
             }
         
         # Stream agent response

@@ -42,8 +42,8 @@ def remove_edge(
         tool_err = f"No match found for '{street_name}'"
         return Command(update={"messages": [ToolMessage(tool_err, tool_call_id=runtime.tool_call_id)]})
 
-    # remove the edge from the file
-    edges_gdf = edges_gdf[edges_gdf["name"] != match]
+    # remove the edge from the file - but wrap in geodf because it can degrade to simple df
+    edges_gdf = gpd.GeoDataFrame(edges_gdf[edges_gdf["name"] != match])
     
     # save the modified edges file w/ a timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

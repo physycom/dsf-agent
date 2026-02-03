@@ -1,8 +1,8 @@
 from rapidfuzz import process, fuzz
-import pandas as pd
+import geopandas as gpd
 from datetime import datetime, timezone
 
-def fuzzy_match(dataset : pd.DataFrame, column_name : str, input_str : str, threshold : int = 65) -> str: 
+def fuzzy_match(gdf : gpd.GeoDataFrame, column_name : str, input_str : str, threshold : int = 65) -> str: 
     """
     Performs fuzzy matching to find the best match for the input string
     within a specified column of a dataset.
@@ -11,7 +11,7 @@ def fuzzy_match(dataset : pd.DataFrame, column_name : str, input_str : str, thre
     otherwise a message indicating no match.
 
     Args: 
-        dataset: The dataset to search in
+        gdf: The geodataframe to search in
         column_name: The column to search in
         input_str: The input string to match
         threshold: The threshold for the match score
@@ -24,7 +24,7 @@ def fuzzy_match(dataset : pd.DataFrame, column_name : str, input_str : str, thre
     """
 
     known_strs = (
-        dataset[column_name]
+        gdf[column_name]
         .dropna()
         .astype(str)
         .str.strip().unique()
