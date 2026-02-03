@@ -19,6 +19,7 @@ The `remove_edge` tool takes the following argument:
 
 This tool removes a street from the simulation's cartography. 
 Use it if the user asks you to remove a street from the simulation's cartography, before running simulations.
+If the user asks to "close" a street, interpret it as removing the street from the simulation's cartography.
 
 ## Run Simulation
 

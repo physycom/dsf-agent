@@ -36,10 +36,11 @@ def fuzzy_match(dataset : pd.DataFrame, column_name : str, input_str : str, thre
         scorer=fuzz.token_sort_ratio   # maybe there are others that work better w/ street names?
     )
 
-    if match_result is None or score < threshold:
+    if match_result is None:
         return None
 
     match, score, _ = match_result
+
     return match, score
 
 def get_epoch_time(day: str, start_hour: int, start_minute: int = 0) -> int:
