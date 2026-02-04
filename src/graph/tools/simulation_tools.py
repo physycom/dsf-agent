@@ -6,8 +6,7 @@ from langgraph.types import Command
 from langchain_core.messages import ToolMessage
 from typing import Annotated
 from tqdm.rich import trange
-import geopandas as gpd
-from .utils import fuzzy_match, get_epoch_time
+from .utils import get_epoch_time, create_output_dir
 import numpy as np 
 import pickle
 from datetime import datetime
@@ -16,6 +15,8 @@ import warnings
 from tqdm import TqdmExperimentalWarning
 # I hate warnings
 warnings.filterwarnings("ignore", category=TqdmExperimentalWarning)
+
+from ...visualization import open_visualization
 
 @tool 
 def run_simulation(
@@ -40,6 +41,9 @@ def run_simulation(
     """
 
     print(f"\n=== RUNNING SIMULATION ===\n\nAttempting to run simulation with parameters: dt_agent={dt_agent}, duration={duration}, day={day}, start_hour={start_hour}\n")
+
+    # Create output directory
+    output_dir = create_output_dir()
 
     edges_filepath = runtime.state["edges_filepath"]
     print(f">>> Loading edges from {edges_filepath}...")
@@ -143,8 +147,17 @@ def run_simulation(
 
     print("\n=== SIMULATION COMPLETED SUCCESSFULLY ===\n")
 
+    # Open visualization webapp
+    print(">>> Opening visualization webapp...")
+    try:
+        open_visualization(output_dir=output_dir)
+    except Exception as e:
+        print(f"WARNING: Could not open visualization: {e}")
+        print(">>> You can manually open the visualization later")
+
     return Command(
         update={
-            "messages": [ToolMessage(f"Simulation completed successfully. Results saved to ./output directory.", tool_call_id=runtime.tool_call_id)]
+            "messages": [ToolMessage(f"Simulation completed successfully. Results saved to {output_dir} directory. Visualization opened in browser.", tool_call_id=runtime.tool_call_id)],
+            "output_dir" : output_dir # save the output directory in state
         }
     )

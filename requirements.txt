@@ -4,5 +4,6 @@ langgraph
 langchain-openai
 langchain-anthropic
 
+Flask==2.x
 tqdm
 dotenv

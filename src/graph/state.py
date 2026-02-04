@@ -17,3 +17,4 @@ class SimulationState(AgentState):
     """
     edges_filepath: Annotated[str, str_replace]  # path to the edges file
     nodes_filepath: Annotated[str, str_replace]  # path to the nodes file
+    output_dir: Annotated[str, str_replace]  # path to the output directory

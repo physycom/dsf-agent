@@ -84,3 +84,15 @@ def get_epoch_time(day: str, start_hour: int, start_minute: int = 0) -> int:
 if __name__ == "__main__":
     ts = get_epoch_time("2022-01-15", 11, 30)  
     print(datetime.fromtimestamp(ts, tz=timezone.utc))
+
+def create_output_dir(output_dir: str = "output") -> str:
+    """
+    Creates the output directory if it does not exist, with a timestamp in the name.
+
+    Args:
+        output_dir: The path to the output directory (Optional: default is "output")
+    Returns:
+        The path to the output directory with the timestamp in the name
+    """
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return f"{output_dir}_{timestamp}"
