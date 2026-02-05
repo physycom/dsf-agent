@@ -1,12 +1,10 @@
-import pathlib
-import shutil
 from dsf import mobility, set_log_level, LogLevel
 from langchain.tools import tool, ToolRuntime
 from langgraph.types import Command
 from langchain_core.messages import ToolMessage
 from typing import Annotated
 from tqdm.rich import trange
-from .utils import get_epoch_time, create_output_dir
+from .utils import get_epoch_time, create_output_dir, copy_as_csv
 import numpy as np 
 import pickle
 
@@ -79,8 +77,9 @@ def run_simulation(
     rn.adjustNodeCapacities()
     rn.autoMapStreetLanes()
 
-    # Copy edges file to output directory for reference
-    shutil.copy(edges_filepath, f"./{output_dir}/edges.geojson")
+    # Copy edges file to output directory for reference.
+    # NOTE: if it's a csv, just copies it. If it's a geojson, converts it to csv.
+    copy_as_csv(edges_filepath, f"./{output_dir}/edges.csv")
 
     simulator = mobility.Dynamics(rn, False, 69, 0.8)
     simulator.killStagnantAgents(10.0)

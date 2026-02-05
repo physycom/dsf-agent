@@ -1,8 +1,10 @@
+import os
 from rapidfuzz import process, fuzz
 import geopandas as gpd
 from datetime import datetime, timezone
 import pandas as pd
 from shapely import wkt
+import shutil
 
 def fuzzy_match(gdf : gpd.GeoDataFrame, column_name : str, input_str : str) -> tuple[str, int]: 
     """
@@ -81,10 +83,6 @@ def get_epoch_time(day: str, start_hour: int, start_minute: int = 0) -> int:
     # 3. Convert to int (timestamp returns float)
     return int(t_utc.timestamp())
 
-if __name__ == "__main__":
-    ts = get_epoch_time("2022-01-15", 11, 30)  
-    print(datetime.fromtimestamp(ts, tz=timezone.utc))
-
 def create_output_dir(output_dir: str = "output") -> str:
     """
     Creates the output directory if it does not exist, with a timestamp in the name.
@@ -95,4 +93,21 @@ def create_output_dir(output_dir: str = "output") -> str:
         The path to the output directory with the timestamp in the name
     """
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    os.makedirs(f"{output_dir}_{timestamp}", exist_ok=True)
     return f"{output_dir}_{timestamp}"
+
+def copy_as_csv(source_path: str, destination_path: str) -> None:
+    """
+    Copies a file from the source path to the destination path as a csv file.
+    Made to copy edges file, which can be a geojson or a csv.
+    If it is a geojson, we convert it to csv.
+
+    Args:
+        source_path: The path to the source file
+        destination_path: The path to the destination file
+    """
+    if source_path.endswith(".geojson"):
+        df = gpd.read_file(source_path)
+        df.to_csv(destination_path, index=False, sep=";")
+    else:
+        shutil.copy(source_path, destination_path)
