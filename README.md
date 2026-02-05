@@ -22,7 +22,7 @@ Then run the code from the root directory of the project with
 $ python -m src.main
 ```
 
-![alt](./readme_imgs/screenshot.png)
+![alt](./readme_imgs/updated.png)
 
 ## Future Improvements Ideas:
 
