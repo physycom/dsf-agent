@@ -6,4 +6,4 @@ references/
 *.csv
 *.geojson
 *pycache*
-updated_output/
+updated_input/
