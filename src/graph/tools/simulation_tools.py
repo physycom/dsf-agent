@@ -9,7 +9,6 @@ from tqdm.rich import trange
 from .utils import get_epoch_time, create_output_dir
 import numpy as np 
 import pickle
-from datetime import datetime
 
 import warnings
 from tqdm import TqdmExperimentalWarning
@@ -77,18 +76,11 @@ def run_simulation(
     print(f">>> Bologna's road network has {rn.nNodes()} nodes and {rn.nEdges()} edges.")
     print(f">>> There are {rn.nCoils()} magnetic coils, {rn.nTrafficLights()} traffic lights and {rn.nRoundabouts()} roundabouts\n")
 
-    # Clear output directory
-    output_dir = pathlib.Path("./output")
-    output_dir.mkdir(parents=True, exist_ok=True)
-    for file in output_dir.glob("*"):
-        if file.is_file():
-            file.unlink()
-
     rn.adjustNodeCapacities()
     rn.autoMapStreetLanes()
 
     # Copy edges file to output directory for reference
-    shutil.copy(edges_filepath, "./output/edges.csv")
+    shutil.copy(edges_filepath, f"./{output_dir}/edges.geojson")
 
     simulator = mobility.Dynamics(rn, False, 69, 0.8)
     simulator.killStagnantAgents(10.0)
@@ -136,10 +128,10 @@ def run_simulation(
             # if i % 3600 == 0:
             #     simulator.saveOutputStreetCounts("./output/counts.csv", True)
             if i % 300 == 0:
-                simulator.saveStreetDensities("./output/densities.csv", True)
-                simulator.saveTravelData("./output/speeds.csv")
+                simulator.saveStreetDensities(f"./{output_dir}/densities.csv", True)
+                simulator.saveTravelData(f"./{output_dir}/speeds.csv")
                 # if i % 1500 == 0:
-                simulator.saveMacroscopicObservables("./output/data.csv")
+                simulator.saveMacroscopicObservables(f"./{output_dir}/data.csv")
         if i % dt_agent == 0 and i // dt_agent < len(input_vehicles):
             n_agents = int(input_vehicles[i // dt_agent] / SCALE)
             simulator.addAgentsRandomly(n_agents if n_agents > 0 else 0)

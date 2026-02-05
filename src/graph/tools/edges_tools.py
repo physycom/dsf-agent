@@ -27,7 +27,7 @@ def remove_edge(
     # NOTE: this removes the whole street, not a lane. To remove a lane, you would need to remove by id
     # (!) ---------------------------------------------------------------------------------------------
 
-    # Read as DataFrame specifying the separator ";"
+    # Read from state
     edges_filepath = runtime.state["edges_filepath"]
     print(f"Reading edges file from {edges_filepath}...")    
     edges_gdf = read_edges_file(edges_filepath)
@@ -35,7 +35,7 @@ def remove_edge(
     # names are saved under the 'name' field like this: via_alessandro_codivilla
     # the llm needs a way to match natural language input with the exact name: use fuzzy match! 
     match, score = fuzzy_match(edges_gdf, "name", street_name)
-    if match is None or score < 75: # threshold is 85 because it's the minimum score to be considered a match
+    if match is None or score < 75: # threshold is 75% match
         tool_err = f"No match found for '{street_name}'"
         return Command(update={"messages": [ToolMessage(tool_err, tool_call_id=runtime.tool_call_id)]})
 
