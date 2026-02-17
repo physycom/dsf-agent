@@ -1,6 +1,6 @@
 import pathlib
 import shutil
-from dsf import mobility, set_log_level, LogLevel
+from dsf import mobility
 from langchain.tools import tool, ToolRuntime
 from langgraph.types import Command
 from langchain_core.messages import ToolMessage
@@ -31,11 +31,9 @@ def simulate_slow_charge(
         The path to the output directory containing the simulation results.
     """
 
-    set_log_level(LogLevel.ERROR)
-
     OUT_FOLDER = "output_slow_charge"
     EDGES_FILE = runtime.state["edges_filepath"]
-    NODES_FILE = runtime.state["nodes_filepath"]
+    # NODES_FILE = runtime.state["nodes_filepath"]
 
     print("Constructing road network...")
     rn = mobility.RoadNetwork()
@@ -85,11 +83,3 @@ def simulate_slow_charge(
             "messages" : [ToolMessage(content=f"Simulation completed successfully. Results saved to {OUT_FOLDER}.", tool_call_id=runtime.tool_call_id)]
         }
     )
-
-
-# TODO: visualization tool 
-'''
-@tool
-def visualize_simulation():
-    """
-    """'''

@@ -1,4 +1,4 @@
-from dsf import mobility, set_log_level, LogLevel
+from dsf import mobility
 from langchain.tools import tool, ToolRuntime
 from langgraph.types import Command
 from langchain_core.messages import ToolMessage
@@ -46,8 +46,6 @@ def run_simulation(
 
     edges_filepath = runtime.state["edges_filepath"]
     print(f">>> Loading edges from {edges_filepath}...")
-
-    set_log_level(LogLevel.ERROR)
 
     SCALE = 25  # hardcoded 
     N_SIMULATIONS = 10  # hardcoded
