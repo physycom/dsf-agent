@@ -62,7 +62,7 @@ def read_edges_file(filepath: str) -> gpd.GeoDataFrame:
     # create a GeoDataFrame
     return gpd.GeoDataFrame(edges_df, geometry='geometry', crs="EPSG:4326")
 
-def get_epoch_time(day: str, start_hour: int, start_minute: int = 0) -> int:
+def get_epoch_time(day: str, start_hour: int, start_minute: int = 0, include_tram = False) -> int:
     """
     Returns the epoch time for a given day and hour in UTC.
 
@@ -70,6 +70,7 @@ def get_epoch_time(day: str, start_hour: int, start_minute: int = 0) -> int:
         day: The day of the simulation in the format YYYY-MM-DD
         start_hour: The hour of the day to start the simulation at, as an integer between 0 and 23
         start_minute: The minute of the hour to start the simulation at, as an integer between 0 and 59
+        include_tram: wether we have to account for the tram existing or not. If yes, we add 2 years to the epoch.
     Returns:
         The epoch time for the given day and hour in UTC, as an integer.
     """
@@ -81,7 +82,13 @@ def get_epoch_time(day: str, start_hour: int, start_minute: int = 0) -> int:
     t_utc = t.replace(hour=start_hour, minute=start_minute, tzinfo=timezone.utc)
     
     # 3. Convert to int (timestamp returns float)
-    return int(t_utc.timestamp())
+    t_int = int(t_utc.timestamp())
+
+    # 4. Adjust epoch for tram (+2 years)
+    if include_tram:
+        t_int += 365 * 24 * 60 * 60 * 2 
+
+    return t_int
 
 def create_output_dir(output_dir: str = "output") -> str:
     """

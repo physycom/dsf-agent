@@ -23,16 +23,18 @@ def run_simulation(
     duration : Annotated[int, "Duration of the simulation, in seconds"] = 60 * 60,  # 1 hour default
     day : Annotated[str, "The day of the simulation in the format YYYY-MM-DD"] = '2022-01-31',
     start_hour: Annotated[int, "The hour of the day to start the simulation at, as an integer between 0 and 23"] = 0,
+    include_tram: Annotated[bool, "Whether to include trams in the simulation"] = False,
     # start_minute: Annotated[int, "The minute of the hour to start the simulation at, as an integer between 0 and 59"] = 0,  array is hourly computed so no need for minutes now
 )-> Command:
     """
     Use this tool to run the mobility simulation. 
 
     Args:
-        dt_agent: Time interval for agent spawning
-        duration: Duration of the simulation, in seconds
-        day: The day of the simulation in the format YYYY-MM-DD
-        start_hour: The hour of the day to start the simulation at, as an integer between 0 and 23
+        dt_agent: Time interval for agent spawning. Defaults to 10 seconds
+        duration: Duration of the simulation, in seconds. Defaults to 1 hour
+        day: The day of the simulation in the format YYYY-MM-DD. Default: 2022-01-31
+        start_hour: The hour of the day to start the simulation at, as an integer between 0 and 23. Defaults to 0.
+        include_tram: Wether to consider the new tram line or not in the simulaiton. Defaults to False
     Returns:
         A message indicating that the simulation has been run.
         The path to the output directory containing the simulation results.
@@ -86,7 +88,23 @@ def run_simulation(
         rn = mobility.RoadNetwork()
         rn.importEdges(f"{INPUT_FOLDER}/edges.csv")
         rn.importNodeProperties(f"{INPUT_FOLDER}/node_props.csv")
-        rn.makeRoundabout(72)  # hardcoded
+
+        # if we consider the tram: update the network accordingly
+        if include_tram:
+            rn.setStreetStatusById(
+                6285, dsf.mobility.RoadStatus.CLOSED
+            )  # Piece of via_serena
+            rn.setStreetStatusById(5637, dsf.mobility.RoadStatus.CLOSED)
+            rn.setStreetStatusById(4645, dsf.mobility.RoadStatus.CLOSED)
+            rn.setStreetStatusById(1750, dsf.mobility.RoadStatus.CLOSED)
+            rn.changeStreetNLanesByName("viale_della_fiera", 1, 0.5)
+            rn.changeStreetNLanesByName("viale_europa", 1, 0.5)
+            rn.changeStreetNLanesByName("viale_della_repubblica", 1, 0.5)
+            rn.changeStreetNLanesByName("saffi", 1, 0.5)
+            rn.changeStreetNLanesByName("ponente", 1, 0.5)
+            rn.changeStreetNLanesByName("sabotino", 1, 0.5)
+            rn.changeStreetNLanesByName("di_reno", 1, 0.5)
+            rn.changeStreetNLanesByName("liberazione", 1, 0.5)
 
         rn.adjustNodeCapacities()
         rn.autoMapStreetLanes()
@@ -94,16 +112,15 @@ def run_simulation(
         rn.autoInitTrafficLights()
 
         simulator = mobility.Dynamics(rn, False, SEED, ALPHA)
+        if include_tram:
+            simulator.setName(f"sim_{day}_with_tram_{SEED}")
+        else: 
+            simulator.setName(f"sim_{day}_no_tram_{SEED}")
+
         simulator.killStagnantAgents(40.0)
 
-        # Copy edges file to output directory for reference.
-        # NOTE: if it's a csv, just copies it. If it's a geojson, converts it to csv.
-        # copy_as_csv(edges_filepath, f"./{output_dir}/edges.csv")
-
-        simulator.killStagnantAgents(10.0)
-
         # Get the epoch time for the actual day of the simulation
-        epoch_time = get_epoch_time(day, start_hour) # start minute
+        epoch_time = get_epoch_time(day, start_hour, include_tram=include_tram) # start minute
         simulator.setInitTime(epoch_time)
 
         # NOTE: now saving data to a database
