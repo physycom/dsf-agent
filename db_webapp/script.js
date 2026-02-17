@@ -1423,11 +1423,89 @@ function initializeApp() {
   }
 }
 
+// Function to auto-load database from URL parameter
+async function autoLoadDatabase(dbUrl) {
+  const dbStatus = document.getElementById('db-status');
+  const dbModal = document.getElementById('db-modal');
+  
+  try {
+    console.log('Auto-loading database from:', dbUrl);
+    
+    // Initialize sql.js
+    const SQL = await initSqlJs({
+      locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`
+    });
+    
+    // Fetch the database file
+    const response = await fetch(dbUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch database: ${response.status} ${response.statusText}`);
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+    
+    // Open the database
+    db = new SQL.Database(uint8Array);
+    
+    // Verify tables exist
+    const tables = db.exec("SELECT name FROM sqlite_master WHERE type='table'");
+    const tableNames = tables.length > 0 ? tables[0].values.map(r => r[0]) : [];
+    
+    if (!tableNames.includes('edges')) {
+      throw new Error("Database missing 'edges' table");
+    }
+    if (!tableNames.includes('road_data')) {
+      throw new Error("Database missing 'road_data' table");
+    }
+    if (!tableNames.includes('simulations')) {
+      throw new Error("Database missing 'simulations' table");
+    }
+    
+    // Get available simulations
+    const simulations = getSimulations();
+    
+    if (simulations.length === 0) {
+      throw new Error("No simulations found in database");
+    }
+    
+    console.log(`Database loaded! Found ${simulations.length} simulation(s).`);
+    
+    // If only one simulation, auto-select it
+    if (simulations.length === 1) {
+      selectedSimulationId = simulations[0].id;
+      dbModal.classList.add('hidden');
+      initializeApp();
+    } else {
+      // Show simulation selector
+      dbModal.classList.add('hidden');
+      showSimulationSelector(simulations);
+    }
+  } catch (error) {
+    console.error('Auto-loading database error:', error);
+    alert(`Error loading database: ${error.message}`);
+    // Show modal for manual selection as fallback
+    dbModal.classList.remove('hidden');
+  }
+}
+
 // Database loading and simulation selection via modal
 document.addEventListener('DOMContentLoaded', () => {
   const dbFileInput = document.getElementById('dbFileInput');
   const loadDbBtn = document.getElementById('loadDbBtn');
   const dbStatus = document.getElementById('db-status');
+  
+  // Check for database parameter in URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const dbParam = urlParams.get('db');
+  
+  if (dbParam) {
+    // Auto-load database from URL parameter
+    autoLoadDatabase(dbParam);
+  } else {
+    // Show modal for manual selection
+    document.getElementById('db-modal').classList.remove('hidden');
+  }
   
   loadDbBtn.addEventListener('click', async () => {
     const file = dbFileInput.files[0];
