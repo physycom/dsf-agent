@@ -7,3 +7,6 @@ references/
 *.geojson
 *pycache*
 updated_input/
+AGENTS.md
+output*
+old_webapp
