@@ -15,6 +15,8 @@ warnings.filterwarnings("ignore", category=TqdmExperimentalWarning)
 
 from ...visualization import open_visualization
 
+INPUT_FOLDER="./updated_input"
+
 @tool 
 def run_simulation(
     runtime : ToolRuntime,
@@ -48,14 +50,23 @@ def run_simulation(
     set_log_level(LogLevel.ERROR)
 
     SCALE = 25  # hardcoded 
+    N_SIMULATIONS = 10  # hardcoded
+    ALPHA = 0.9  # hardcoded
     NORM_WEIGHTS = False
     SMOOTHING_HOURS = 3  # Number of hours to average over (odd number recommended)
 
-    input_vehicles = np.load("./input/vehicles10seconds_spline.npy")
+    print(f">>> Loading input data from {INPUT_FOLDER}...")
+    input_vehicles_mean = np.load(f"{INPUT_FOLDER}/vehicles10s_2022_mean.npy")
+    input_vehicles_std = np.load(f"{INPUT_FOLDER}/vehicles10s_2022_std.npy")
+    # Ensure both are >= 0
+    input_vehicles_mean = np.clip(input_vehicles_mean, 0, None)
+    input_vehicles_std = np.clip(input_vehicles_std, 0, None)
+    # Shift input vehicles ahead of 360 points (1 hour)
+    input_vehicles_mean = np.roll(input_vehicles_mean, 360)
+    input_vehicles_std = np.roll(input_vehicles_std, 360)
 
-    print(">>> Loading origin and destination nodes...")
-    origin_nodes = pickle.load(open("./input/origin_dicts.pkl", "rb"))
-    destination_nodes = pickle.load(open("./input/destination_dicts.pkl", "rb"))
+    origin_nodes = pickle.load(open(f"{INPUT_FOLDER}/origin_dicts.pkl", "rb"))
+    destination_nodes = pickle.load(open(f"{INPUT_FOLDER}/destination_dicts.pkl", "rb"))
 
     # Make all weights 1
     if NORM_WEIGHTS:
@@ -66,75 +77,90 @@ def run_simulation(
             for key in dest_dict:
                 dest_dict[key] = 1
 
-    rn = mobility.RoadNetwork()
-    rn.importEdges(edges_filepath)
-    # rn.importNodeProperties("./input/node_props.csv") # not needed for now
-    rn.makeRoundabout(72)
+    
+    for _ in trange(N_SIMULATIONS, desc="Simulations"):
+        # Generate random seed for each simulation
+        SEED = np.random.randint(0, 1000000)
+        # Set np seed for reproducibility
+        np.random.seed(SEED)
+        # Generate input_vehicles for this simulation by sampling from normal distribution
+        input_vehicles = np.random.normal(input_vehicles_mean, input_vehicles_std)
+        input_vehicles = np.clip(input_vehicles, 0, None)  # No negative vehicles
+        rn = mobility.RoadNetwork()
+        rn.importEdges(f"{INPUT_FOLDER}/edges.csv")
+        rn.importNodeProperties(f"{INPUT_FOLDER}/node_props.csv")
+        rn.makeRoundabout(72)  # hardcoded
 
-    print(f">>> Bologna's road network has {rn.nNodes()} nodes and {rn.nEdges()} edges.")
-    print(f">>> There are {rn.nCoils()} magnetic coils, {rn.nTrafficLights()} traffic lights and {rn.nRoundabouts()} roundabouts\n")
+        rn.adjustNodeCapacities()
+        rn.autoMapStreetLanes()
+        rn.autoAssignRoadPriorities()
+        rn.autoInitTrafficLights()
 
-    rn.adjustNodeCapacities()
-    rn.autoMapStreetLanes()
+        simulator = mobility.Dynamics(rn, False, SEED, ALPHA)
+        simulator.killStagnantAgents(40.0)
 
-    # Copy edges file to output directory for reference.
-    # NOTE: if it's a csv, just copies it. If it's a geojson, converts it to csv.
-    copy_as_csv(edges_filepath, f"./{output_dir}/edges.csv")
+        # Copy edges file to output directory for reference.
+        # NOTE: if it's a csv, just copies it. If it's a geojson, converts it to csv.
+        # copy_as_csv(edges_filepath, f"./{output_dir}/edges.csv")
 
-    simulator = mobility.Dynamics(rn, False, 69, 0.8)
-    simulator.killStagnantAgents(10.0)
+        simulator.killStagnantAgents(10.0)
 
-    # Get the epoch time for the actual day of the simulation
-    epoch_time = get_epoch_time(day, start_hour) # start minute
-    simulator.setInitTime(epoch_time)
+        # Get the epoch time for the actual day of the simulation
+        epoch_time = get_epoch_time(day, start_hour) # start minute
+        simulator.setInitTime(epoch_time)
 
-    start_time_seconds = start_hour * 3600
-    end_time_seconds = start_time_seconds + duration
+        # NOTE: now saving data to a database
+        simulator.connectDataBase("database.db")
+        simulator.saveData(300, True, True, True)
 
-    # NOTE: simulate from start_hour until start_hour + duration 
-    for i in trange(start_time_seconds, end_time_seconds + 1, desc="Simulating flows"):
-        if i % 3600 == 0 and i // 3600 < len(origin_nodes):
-            # do a mean over the weights for SMOOTHING_HOURS hours (centered on current hour)
-            origins = origin_nodes[
-                i // 3600
-            ].copy()  # Create a copy to avoid modifying original
-            destinations = destination_nodes[i // 3600]
+        turn_counts = []
 
-            # Collect all unique keys from the smoothing window
-            all_keys = set(origins.keys())
-            half_window = SMOOTHING_HOURS // 2
-            for offset in range(-half_window, half_window + 1):
-                hour_idx = i // 3600 + offset
-                if 0 <= hour_idx < len(origin_nodes):
-                    all_keys.update(origin_nodes[hour_idx].keys())
+        # start and end times
+        start_time_seconds = start_hour * 3600
+        end_time_seconds = start_time_seconds + duration
 
-            # For each key, average available values from the smoothing window
-            for key in all_keys:
-                values = []
+        # NOTE: simulate from start_hour until start_hour + duration 
+        for i in trange(start_time_seconds, end_time_seconds + 1, desc="Simulating flows"):
+            if i % 3600 == 0 and i // 3600 < len(origin_nodes):
+                # do a mean over the weights for SMOOTHING_HOURS hours (centered on current hour)
+                origins = origin_nodes[
+                    i // 3600
+                ].copy()  # Create a copy to avoid modifying original
+                destinations = destination_nodes[i // 3600]
+
+                # Collect all unique keys from the smoothing window
+                all_keys = set(origins.keys())
+                half_window = SMOOTHING_HOURS // 2
                 for offset in range(-half_window, half_window + 1):
                     hour_idx = i // 3600 + offset
-                    if 0 <= hour_idx < len(origin_nodes) and key in origin_nodes[hour_idx]:
-                        values.append(origin_nodes[hour_idx][key])
+                    if 0 <= hour_idx < len(origin_nodes):
+                        all_keys.update(origin_nodes[hour_idx].keys())
 
-                if values:
-                    origins[key] = sum(values) / len(values)
-            simulator.setOriginNodes(origins)
-            simulator.setDestinationNodes(destinations)
-        if i % 300 == 0:
-            simulator.updatePaths()
-            # print(f"Hour {i // 3600}: updated paths")
-        if i >= 0:
-            # if i % 3600 == 0:
-            #     simulator.saveOutputStreetCounts("./output/counts.csv", True)
+                # For each key, average available values from the smoothing window
+                for key in all_keys:
+                    values = []
+                    for offset in range(-half_window, half_window + 1):
+                        hour_idx = i // 3600 + offset
+                        if 0 <= hour_idx < len(origin_nodes) and key in origin_nodes[hour_idx]:
+                            values.append(origin_nodes[hour_idx][key])
+
+                    if values:
+                        origins[key] = sum(values) / len(values)
+
+                simulator.setOriginNodes(origins)
+                simulator.setDestinationNodes(destinations)
+
             if i % 300 == 0:
-                simulator.saveStreetDensities(f"./{output_dir}/densities.csv", True)
-                simulator.saveTravelData(f"./{output_dir}/speeds.csv")
-                # if i % 1500 == 0:
-                simulator.saveMacroscopicObservables(f"./{output_dir}/data.csv")
-        if i % dt_agent == 0 and i // dt_agent < len(input_vehicles):
-            n_agents = int(input_vehicles[i // dt_agent] / SCALE)
-            simulator.addAgentsRandomly(n_agents if n_agents > 0 else 0)
-        simulator.evolve(False)
+                simulator.updatePaths(False)
+                
+            if i >= 0:
+                if i % 3600 == 0:
+                    turn_counts.append(simulator.normalizedTurnCounts())
+            if i % dt_agent == 0 and i // dt_agent < len(input_vehicles):
+                n_agents = int(input_vehicles[i // dt_agent] / SCALE)
+                simulator.addAgentsRandomly(n_agents if n_agents > 0 else 0)
+                
+            simulator.evolve(False)
 
     print("\n=== SIMULATION COMPLETED SUCCESSFULLY ===\n")
 
