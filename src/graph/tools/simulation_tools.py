@@ -1,3 +1,4 @@
+import dsf
 from dsf import mobility
 from langchain.tools import tool, ToolRuntime
 from langgraph.types import Command
@@ -8,10 +9,8 @@ from .utils import get_epoch_time, create_output_dir, copy_as_csv
 import numpy as np 
 import pickle
 
-import warnings
-from tqdm import TqdmExperimentalWarning
 # I hate warnings
-warnings.filterwarnings("ignore", category=TqdmExperimentalWarning)
+dsf.set_log_level(dsf.LogLevel.ERROR)
 
 from ...visualization import open_visualization
 
@@ -21,7 +20,7 @@ INPUT_FOLDER="./updated_input"
 def run_simulation(
     runtime : ToolRuntime,
     dt_agent : Annotated[int, "Time interval for agent spawning"] = 10,
-    duration : Annotated[int, "Duration of the simulation, in seconds"] = 24 * 60 * 60,
+    duration : Annotated[int, "Duration of the simulation, in seconds"] = 60 * 60,  # 1 hour default
     day : Annotated[str, "The day of the simulation in the format YYYY-MM-DD"] = '2022-01-31',
     start_hour: Annotated[int, "The hour of the day to start the simulation at, as an integer between 0 and 23"] = 0,
     # start_minute: Annotated[int, "The minute of the hour to start the simulation at, as an integer between 0 and 59"] = 0,  array is hourly computed so no need for minutes now
@@ -108,7 +107,7 @@ def run_simulation(
         simulator.setInitTime(epoch_time)
 
         # NOTE: now saving data to a database
-        simulator.connectDataBase("database.db")
+        simulator.connectDataBase(f"{output_dir}/database.db")
         simulator.saveData(300, True, True, True)
 
         turn_counts = []

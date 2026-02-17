@@ -910,12 +910,20 @@ function loadEdgesFromDB() {
 function loadRoadDataFromDB() {
   // Get edge IDs in order
   const edgeIds = edges.map(e => e.id);
+  console.log("=== LOAD ROAD DATA DEBUG ===");
+  console.log("Edge IDs count:", edgeIds.length);
+  console.log("Edge ID range:", Math.min(...edgeIds), "to", Math.max(...edgeIds));
+  console.log("Selected simulation ID:", selectedSimulationId);
   
   // Single query to get all data ordered by datetime and street_id
   const result = db.exec(
     `SELECT datetime, street_id, density_vpk FROM road_data WHERE simulation_id = ${selectedSimulationId} ORDER BY datetime, street_id`
   );
-  if (result.length === 0) return [];
+  console.log("SQL result rows:", result.length > 0 ? result[0].values.length : 0);
+  if (result.length === 0) {
+    console.log("NO ROAD DATA FOUND!");
+    return [];
+  }
   
   const densityData = [];
   let currentTs = null;
@@ -996,9 +1004,21 @@ function initializeApp() {
   densities = loadRoadDataFromDB();
   globalData = loadGlobalDataFromDB();
 
+  console.log("=== INITIALIZATION DEBUG ===");
+  console.log("Selected simulation ID:", selectedSimulationId, "(type:", typeof selectedSimulationId, ")");
   console.log("Loaded edges:", edges.length);
+  if (edges.length > 0) {
+    console.log("First edge sample:", JSON.stringify(edges[0]));
+    console.log("First edge geometry points:", edges[0].geometry?.length || 0);
+  }
   console.log("Loaded density timestamps:", densities.length);
+  if (densities.length > 0) {
+    console.log("First density timestamp:", densities[0].datetime);
+    console.log("First density array length:", densities[0].densities?.length || 0);
+    console.log("First density array sample:", densities[0].densities?.slice(0, 5));
+  }
   console.log("Loaded global data:", globalData.length);
+  console.log("===========================");
 
   if (!edges.length) {
     alert("No edges found in database.");
@@ -1028,7 +1048,12 @@ function initializeApp() {
       allLons.sort((a, b) => a - b);
       const medianLat = allLats[Math.floor(allLats.length / 2)];
       const medianLon = allLons[Math.floor(allLons.length / 2)];
+      console.log("Setting map center to:", medianLat, medianLon, "zoom:", baseZoom);
+      console.log("Lat range:", allLats[0], "to", allLats[allLats.length-1]);
+      console.log("Lon range:", allLons[0], "to", allLons[allLons.length-1]);
       map.setView([medianLat, medianLon], baseZoom);
+    } else {
+      console.log("WARNING: No lat/lon data found for edges!");
     }
 
     // Create Canvas layer for edges
@@ -1477,8 +1502,7 @@ async function autoLoadDatabase(dbUrl) {
       dbModal.classList.add('hidden');
       initializeApp();
     } else {
-      // Show simulation selector
-      dbModal.classList.add('hidden');
+      // Show simulation selector (don't hide modal first!)
       showSimulationSelector(simulations);
     }
   } catch (error) {
@@ -1568,27 +1592,27 @@ document.addEventListener('DOMContentLoaded', () => {
       loadDbBtn.disabled = false;
     }
   });
-  
-  // Simulation selector function
-  function showSimulationSelector(simulations) {
-    const modalContent = document.querySelector('.modal-content');
-    
-    modalContent.innerHTML = `
-      <h2>Select Simulation</h2>
-      <p>Choose which simulation to visualize:</p>
-      <div class="db-input-group">
-        <select id="simulationSelector" style="width: 100%; padding: 10px; font-size: 16px; border: 2px solid #ccc; border-radius: 5px;">
-          ${simulations.map(sim => `<option value="${sim.id}">${sim.name} (ID: ${sim.id})</option>`).join('')}
-        </select>
-      </div>
-      <div id="db-status" class="db-status"></div>
-      <button id="loadSimBtn" class="load-db-btn">Load Simulation</button>
-    `;
-    
-    document.getElementById('loadSimBtn').addEventListener('click', () => {
-      selectedSimulationId = parseInt(document.getElementById('simulationSelector').value);
-      document.getElementById('db-modal').classList.add('hidden');
-      initializeApp();
-    });
-  }
 });
+
+// Simulation selector function - moved outside event listener for global access
+function showSimulationSelector(simulations) {
+  const modalContent = document.querySelector('.modal-content');
+  
+  modalContent.innerHTML = `
+    <h2>Select Simulation</h2>
+    <p>Choose which simulation to visualize:</p>
+    <div class="db-input-group">
+      <select id="simulationSelector" style="width: 100%; padding: 10px; font-size: 16px; border: 2px solid #ccc; border-radius: 5px;">
+        ${simulations.map(sim => `<option value="${sim.id}">${sim.name} (ID: ${sim.id})</option>`).join('')}
+      </select>
+    </div>
+    <div id="db-status" class="db-status"></div>
+    <button id="loadSimBtn" class="load-db-btn">Load Simulation</button>
+  `;
+  
+  document.getElementById('loadSimBtn').addEventListener('click', () => {
+    selectedSimulationId = parseInt(document.getElementById('simulationSelector').value);
+    document.getElementById('db-modal').classList.add('hidden');
+    initializeApp();
+  });
+}
