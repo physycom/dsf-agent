@@ -167,7 +167,8 @@ def run_simulation(
     # Open visualization webapp
     print(">>> Opening visualization webapp...")
     try:
-        open_visualization(output_dir=output_dir)
+        db_path = f"{output_dir}/database.db"
+        open_visualization(db_path=db_path)
     except Exception as e:
         print(f"WARNING: Could not open visualization: {e}")
         print(">>> You can manually open the visualization later")

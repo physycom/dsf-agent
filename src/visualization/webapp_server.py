@@ -5,20 +5,19 @@ This module starts a lightweight Flask server that serves the webapp files
 and opens a browser window to display the visualization.
 """
 
-from flask import Flask, send_from_directory, jsonify
+from flask import Flask, send_from_directory, redirect
 import webbrowser
 import threading
 import time
-import os
 from pathlib import Path
 
 
-def open_visualization(output_dir: str = "./output", port: int = 8000, auto_open: bool = True):
+def open_visualization(db_path: str, port: int = 8000, auto_open: bool = True):
     """
     Start Flask server and open webapp visualization in browser.
     
     Args:
-        output_dir: Path to directory containing CSV data files (edges.csv, densities.csv, data.csv)
+        db_path: Path to the SQLite database file containing simulation results
         port: Port to run Flask server on (default: 8000)
         auto_open: Whether to automatically open browser (default: True)
     
@@ -27,18 +26,24 @@ def open_visualization(output_dir: str = "./output", port: int = 8000, auto_open
     
     Example:
         >>> from src.visualization import open_visualization
-        >>> open_visualization(output_dir="./output")
+        >>> open_visualization(db_path="./output_20240101_120000/database.db")
     """
     
     # Get absolute path to webapp folder
-    webapp_path = Path(__file__).parent.parent.parent / "webapp"
+    webapp_path = Path(__file__).parent.parent.parent / "db_webapp"
     
     if not webapp_path.exists():
         print(f"ERROR: Webapp folder not found at {webapp_path}")
         return
     
+    # Resolve the database path
+    resolved_db_path = Path(db_path).resolve()
+    if not resolved_db_path.exists():
+        print(f"ERROR: Database file not found at {resolved_db_path}")
+        return
+    
     print(f">>> Webapp folder: {webapp_path}")
-    print(f">>> Output data directory: {Path(output_dir).resolve()}")
+    print(f">>> Database file: {resolved_db_path}")
     
     # Create Flask app
     app = Flask(
@@ -47,35 +52,22 @@ def open_visualization(output_dir: str = "./output", port: int = 8000, auto_open
         static_url_path=""
     )
     
-    # Route to serve main index
+    # Store database path for route handlers
+    db_dir = resolved_db_path.parent
+    db_filename = resolved_db_path.name
+    
+    # Route to serve main index with database path as URL parameter
     @app.route("/")
     def index():
-        """Serve main HTML file"""
-        return send_from_directory(app.static_folder, "index.html")
+        """Serve main HTML file with database path as URL parameter"""
+        return redirect(f"/index.html?db=/db/{db_filename}")
     
-    # Route to serve dynamic config.json based on output_dir parameter
-    @app.route("/config.json")
-    def serve_config():
-        """Serve config.json dynamically based on output_dir parameter"""
-        # Create config with /data/ prefix (Flask will serve from output_dir)
-        config = {
-            "serverRoot": str(Path.cwd()),
-            "edges": "/data/edges.csv",
-            "densities": "/data/densities.csv",
-            "data": "/data/data.csv"
-        }
-        
-        print(f">>> Serving config.json - data will be served from: {Path(output_dir).resolve()}")
-        
-        return jsonify(config)
-    
-    # Route to serve CSV files from output directory (dynamic based on output_dir parameter)
-    @app.route("/data/<path:filename>")
-    def serve_data_files(filename):
-        """Serve CSV files from the output directory specified in output_dir parameter"""
-        output_path = Path(output_dir).resolve()
-        print(f">>> Serving file: {filename} from {output_path}")
-        return send_from_directory(str(output_path), filename)
+    # Route to serve database files from the output directory
+    @app.route("/db/<path:filename>")
+    def serve_db_files(filename):
+        """Serve database files from the output directory"""
+        print(f">>> Serving database file: {filename} from {db_dir}")
+        return send_from_directory(str(db_dir), filename)
     
     # Route to serve static files (CSS, JS)
     @app.route("/<path:filename>")
