@@ -1,7 +1,6 @@
 from typing import Annotated
 import geopandas as gpd
-import pandas as pd
-from shapely import wkt
+import os
 from .utils import fuzzy_match, read_edges_file
 from datetime import datetime
 from langchain.tools import tool, ToolRuntime
@@ -46,7 +45,8 @@ def remove_edge(
     
     # save the modified edges file w/ a timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    edges_filepath = f"./input/bologna_edges_{timestamp}.geojson"
+    os.makedirs("./edges", exist_ok=True)
+    edges_filepath = f"./edges/bologna_edges_{timestamp}.geojson"
     edges_gdf.to_file(edges_filepath, driver="GeoJSON") # NOTE: no need to modify nodes because there's only a warning in dsf mobility if not found
 
     return Command(
